@@ -118,6 +118,24 @@ O parâmetro `-Recurse` copia diretórios inteiros.
 - `Get-WinEvent -ListLog * | Where-Object ...`: localiza o nome exato de um log.
 - `Get-WmiObject Win32_Service ... StartName`: mostra qual conta inicia o serviço.
 
+#### Verificação do status de proteção do KES
+
+O bloco final da seção verifica se a proteção do Kaspersky Endpoint Security (KES)
+está pausada:
+
+- Define `$flagPath` (`C:\ProgramData\Company\SecurityState\kaspersky-paused.flag`) e
+  `$debugPath` (`kes-status-debug.txt`) e cria o diretório de estado, se necessário.
+- `Get-AVPComPath`: procura o `avp.com` em `C:\Program Files (x86)\Kaspersky Lab` e
+  `C:\Program Files\Kaspersky Lab`, retornando o caminho encontrado.
+- `Get-KESStatusText`: executa `avp.com STATUS`, grava a saída no arquivo de depuração
+  e retorna o texto do status. Se o executável não existir, grava o erro no debug.
+- `Test-KESProtectionPaused`: interpreta a saída e retorna `$true` quando encontra a
+  linha `Protection stopped`.
+- Se a proteção estiver parada, cria o arquivo de flag; se estiver ativa, remove a flag.
+  A flag pode ser consumida por ferramentas de monitoração (por exemplo, PRTG/Zabbix).
+
+O comando `avp.com STATUS` pode exigir senha caso o KES esteja protegido por senha.
+
 ### 7. Instalação e atualização de software
 
 - `iex (iwr ... run.ps1)`: instala o SpotX executando o script oficial do projeto.

@@ -131,6 +131,84 @@ Get-WinEvent -ListLog * | Where-Object { $_.LogName -like "*Kaspersky*" }
 $serviceName = "kladminserver"
 (Get-WmiObject -Class Win32_Service -Filter "Name='$serviceName'").StartName
 
+##############
+# Verificação do status de proteção do Kaspersky Endpoint Security (KES).
+# Cria um arquivo de flag quando a proteção está parada e remove a flag
+# quando a proteção volta a ficar ativa.
+##############
+$flagPath  = "C:\ProgramData\Company\SecurityState\kaspersky-paused.flag"
+$stateDir  = Split-Path $flagPath -Parent
+$debugPath = Join-Path $stateDir "kes-status-debug.txt"
+
+# Garante que o diretório de estado exista.
+if (-not (Test-Path $stateDir -PathType Container)) {
+    New-Item -ItemType Directory -Path $stateDir -Force | Out-Null
+}
+
+# Localiza o executável avp.com nas instalações do Kaspersky.
+function Get-AVPComPath {
+    $roots = @(
+        "C:\Program Files (x86)\Kaspersky Lab",
+        "C:\Program Files\Kaspersky Lab"
+    )
+
+    foreach ($root in $roots) {
+        if (Test-Path $root -PathType Container) {
+            $found = Get-ChildItem -Path $root -Filter "avp.com" -File -Recurse -ErrorAction SilentlyContinue |
+                Sort-Object FullName -Descending |
+                Select-Object -First 1 -ExpandProperty FullName
+
+            if ($found) {
+                return $found
+            }
+        }
+    }
+
+    return $null
+}
+
+# Executa "avp.com STATUS" e grava a saída em um arquivo de depuração.
+function Get-KESStatusText {
+    $avpCom = Get-AVPComPath
+
+    if (-not $avpCom) {
+        "ERROR: avp.com not found" | Set-Content -Path $debugPath -Encoding UTF8
+        return $null
+    }
+
+    $output = & $avpCom STATUS 2>&1 | Out-String
+    "Using avp.com: $avpCom`r`n`r`n$output" | Set-Content -Path $debugPath -Encoding UTF8
+    return $output
+}
+
+# Verifica se a linha "Protection stopped" aparece na saída do STATUS.
+function Test-KESProtectionPaused {
+    $status = Get-KESStatusText
+
+    if (-not $status) {
+        return $false
+    }
+
+    $protectionStopped = $status -split '\r?\n' | Where-Object { $_ -match '^\s*Protection\s+stopped\b' }
+    if ($protectionStopped) {
+        return $true
+    }
+
+    return $false
+}
+
+# Cria ou remove a flag conforme o estado da proteção.
+if (Test-KESProtectionPaused) {
+    if (-not (Test-Path $flagPath -PathType Leaf)) {
+        New-Item -Path $flagPath -ItemType File -Force | Out-Null
+    }
+}
+else {
+    if (Test-Path $flagPath -PathType Leaf) {
+        Remove-Item $flagPath -Force
+    }
+}
+
 # ============================================================================
 # 7. INSTALAÇÃO E ATUALIZAÇÃO DE SOFTWARE
 # ============================================================================
