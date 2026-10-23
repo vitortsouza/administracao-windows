@@ -1,0 +1,36 @@
+# Configurações locais com dados do ambiente (hosts, IPs, comunidade SNMP)
+config.local.ps1
+
+# Credenciais, chaves e segredos
+*.secret.ps1
+*.key
+*.pem
+*.ppk
+*.pfx
+*.p12
+.env
+.env.*
+
+# Logs e saídas geradas
+*.log
+*.txt
+*.csv
+*.json
+*.xml
+out/
+output/
+logs/
+
+# Sistema operacional / editores
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*~
+
+# Temporários
+*.tmp
+*.temp
+~$*
